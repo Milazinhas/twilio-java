@@ -1,0 +1,52 @@
+pip install flask twilio
+
+from flask import Flask, request
+from twilio.twiml.messaging_response import MessagingResponse
+
+app = Flask(__name__)
+
+# Dicionário para armazenar estados do funil de vendas
+users = {}
+
+# Funções do funil de vendas
+def capture_interest(message):
+    return "Olá! Estou aqui para ajudá-lo(a). Qual o seu nome?"
+
+def qualify_lead(message):
+    return f"Ótimo, {message}! Qual o serviço/produto que você está buscando?"
+
+def close_deal(message):
+    return f"Entendido! Vou encaminhar um especialista para falar sobre {message}. Qual o melhor contato para seguirmos?"
+
+@app.route('/bot', methods=['POST'])
+def bot():
+    incoming_msg = request.values.get('Body', '').strip()
+    sender_id = request.values.get('From', '').strip()
+
+    # Inicializa o estado do usuário
+    if sender_id not in users:
+        users[sender_id] = {"step": "capture_interest"}
+
+    # Define o próximo passo do funil
+    step = users[sender_id]["step"]
+
+    if step == "capture_interest":
+        response = capture_interest(incoming_msg)
+        users[sender_id]["step"] = "qualify_lead"
+    elif step == "qualify_lead":
+        response = qualify_lead(incoming_msg)
+        users[sender_id]["step"] = "close_deal"
+    elif step == "close_deal":
+        response = close_deal(incoming_msg)
+        users[sender_id]["step"] = "done"
+    else:
+        response = "Obrigado pelo interesse! Nossa equipe entrará em contato em breve."
+
+    # Responde a mensagem
+    reply = MessagingResponse()
+    reply.message(response)
+    return str(reply)
+
+if __name__ == "__main__":
+    app.run(port=5000)
+
